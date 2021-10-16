@@ -1,9 +1,8 @@
 # SUP4SPACE
 
-GPS track and geotagged photos from a 50km zero carbon 'commute' from Chester to
-Liverpool (New Brighton).
-
-
+GPS track and geotagged photos from a 50km zero carbon paddleboard 'commute' from Chester to
+Liverpool (well, New Brighton).
+View map [HERE](https://jpolton.github.io/SUP4SPACE/)
 
 Sources:
 put gpx track onto map:
