@@ -12,13 +12,26 @@ The gpx file path is specified in `gpxToLeaflet.py`. To generate `index.html` ru
 python gpxToLeaflet.py
 ```
 """
-import os
+import glob, os
 from dateutil import tz
 from datetime import timedelta
+import exiftool
 
 import gpxpy
 import geopy.distance
 
+
+class PhotoMarker:
+    def __init__(self, latitude, longitude, filename):
+        self.latitude = latitude
+        self.longitude = longitude
+        self.filename = filename
+
+    def toJsString(self):
+        return f"""
+            L.marker([{self.latitude},{self.longitude}])
+                    .addTo(myMap)
+                    .bindPopup("<img src='{self.filename}'/>");"""
 
 class DistanceMarker:
     def __init__(self, latitude, longitude, label):
@@ -31,6 +44,15 @@ class DistanceMarker:
             L.marker([{self.latitude},{self.longitude}], {{
               icon: L.divIcon({{ html: '<span style="font-size: 20px; font-weight: bold">{self.label}</span>' }})
             }}).addTo(myMap);"""
+
+
+class PhotoSet:
+    def __init__(self, photoset, photoMarkers=[]):
+        self.photoset = photoset
+        self.photoMarkers = photoMarkers
+
+    def photoMarkersToJsStr(self):
+        return "\n".join(map(lambda marker: marker.toJsString(), self.photoMarkers))
 
 
 class Track:
@@ -57,11 +79,48 @@ class Track:
         return "\n".join(map(lambda marker: marker.toJsString(), self.distanceMarkers))
 
 
-def main(gpxFilename, htmlFilename) -> None:
+def main(gpxFilename, imgDir, htmlFilename) -> None:
     track: Track = load_track(gpxFilename)
+    photoset: PhotoSet = process_photos(imgDir)
     if(track != None and len(track.track) > 0):
-        generate_html(track, htmlFilename)
+        generate_html(track, photoset, htmlFilename)
         print("Done generating html page: ", htmlFilename)
+
+
+def process_photos(dirname: str) -> PhotoSet:
+    if(os.path.exists(dirname) == False):
+        print(f"directory not found: {dirname}")
+        return None
+    files = glob.glob(dirname+"/*.jpeg")
+    tags = ["EXIF:GPSLatitude","EXIF:GPSLongitude",
+            "EXIF:GPSLongitudeRef", "EXIF:GPSLatitudeRef"]
+
+    with exiftool.ExifTool() as et:
+      metadata = et.get_tags_batch(tags, files)
+
+    current_photo = PhotoSet([])
+    try:
+        for i, photo in enumerate(metadata):
+            if photo['EXIF:GPSLatitudeRef'] == "S":
+                lat_sign = -1
+            elif photo['EXIF:GPSLatitudeRef'] == "N":
+                lat_sign = +1
+            if photo['EXIF:GPSLongitudeRef'] == "W":
+                long_sign = -1
+            elif photo['EXIF:GPSLongitudeRef'] == "E":
+                long_sign = +1
+            current_photo.photoset.append([lat_sign*float(photo['EXIF:GPSLatitude']),
+                    long_sign*float(photo['EXIF:GPSLongitude'])])
+
+            newPhotoMarker = PhotoMarker(lat_sign*float(photo['EXIF:GPSLatitude']),
+                    long_sign*float(photo['EXIF:GPSLongitude']),
+                    photo['SourceFile'])
+            current_photo.photoMarkers.append(newPhotoMarker)
+    except Exception as error:
+        print(f"\nParsing directory '{dirname}' failed. Error: {error}")
+        current_photo = None
+    return(current_photo)
+
 
 
 def load_track(filename: str) -> Track:
@@ -97,7 +156,7 @@ def load_track(filename: str) -> Track:
     return(current_track)
 
 
-def generate_html(track: Track, file_out: str) -> None:
+def generate_html(track: Track, photoset: PhotoSet, file_out: str) -> None:
     """Generates a new html file with points"""
     template = """
     <html><head>
@@ -181,6 +240,8 @@ def generate_html(track: Track, file_out: str) -> None:
       return length;
     }
     <!--DISTANCEMARKERS-->
+
+    <!--PHOTOMARKERS-->
   </script>
 </body></html>
     """
@@ -191,10 +252,11 @@ def generate_html(track: Track, file_out: str) -> None:
     template = template.replace('<div id="duration"></div>', '<div id="duration">Duration: ' + track.durationToStr() + '</div>')
     template = template.replace('<div id="distance"></div>', '<div id="distance">Distance: ' + str(round(track.distance, 2)) + ' km</div>')
     template = template.replace('<!--DISTANCEMARKERS-->', track.distanceMarkersToJsStr())
+    template = template.replace('<!--PHOTOMARKERS-->', photoset.photoMarkersToJsStr())
     f = open(file_out, "w")
     f.write(template)
     f.close()
 
 
 if __name__ == '__main__':
-    main("media/SUP4SPACE_13Oct21.gpx", "index.html")
+    main("media/SUP4SPACE_13Oct21.gpx", "media/imgs/", "index.html")
