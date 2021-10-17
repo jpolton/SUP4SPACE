@@ -28,6 +28,7 @@
     <h1>Track info</h1>
     <div id="duration">Duration: 13:16:28</div>
     <div id="distance">Distance: 49.5 km</div>
+    <div id="track"><a href="index_track.html">Track analysis</a></div>
   </div>
   <script>
     var myMap = L.map('mapId', {
@@ -79,7 +80,7 @@
       }
       return length;
     }
-    
+
             L.marker([53.1835303,-2.9012175], {
               icon: L.divIcon({ html: '<span style="font-size: 20px; font-weight: bold">1km</span>' })
             }).addTo(myMap);
@@ -276,7 +277,7 @@
               icon: L.divIcon({ html: '<span style="font-size: 20px; font-weight: bold">49km</span>' })
             }).addTo(myMap);
 
-    
+
             L.marker([53.313625,-3.19536388888889])
                     .addTo(myMap)
                     .bindPopup("<img src='media/imgs/IMG_4277.jpeg'/>");
@@ -602,4 +603,3 @@
                     .bindPopup("<img src='media/imgs/IMG_4262.jpeg'/>");
   </script>
 </body></html>
-    
