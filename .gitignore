@@ -1,0 +1,9 @@
+media/imgs/tile.png
+
+index_editted_v*.html
+index_tile.html
+process_track.py
+
+__pycache__/
+
+*~
